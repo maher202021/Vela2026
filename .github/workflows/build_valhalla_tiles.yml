@@ -1,0 +1,93 @@
+name: Build Valhalla Routing Tiles for Yemen
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'إنشاء Release برابط تحميل مباشر دائم'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-valhalla-tiles:
+    name: Build Yemen Valhalla Tiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      # Step 1: استدعاء كود المشروع
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: تجهيز مجلد العمل custom_files
+      - name: Step 1 - Setup Working Directory
+        run: |
+          mkdir -p custom_files
+          chmod 777 custom_files
+
+      # Step 3: تحميل خريطة اليمن الرسمية من Geofabrik بصيغة PBF
+      - name: Step 2 - Download Yemen OSM PBF
+        run: |
+          echo "جاري تحميل أحدث ملف خريطة لليمن من Geofabrik..."
+          curl -fSL -o custom_files/yemen-latest.osm.pbf https://download.geofabrik.de/asia/yemen-latest.osm.pbf
+          ls -lh custom_files/yemen-latest.osm.pbf
+
+      # Step 4: تشغيل حاوية Valhalla الرسمية لبناء البلاطات وتوليد valhalla_tiles.tar
+      - name: Step 3 - Build Valhalla Tiles via Docker
+        run: |
+          echo "جاري تشغيل حاوية Valhalla وبناء شبكة الطرق والبلاطات..."
+          docker run --rm \
+            -e build_tar=True \
+            -e force_rebuild=True \
+            -v "${{ github.workspace }}/custom_files:/custom_files" \
+            ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+
+      # Step 5: تصحيح أذونات الملفات وضغط البلاطات في ملف ZIP نهائي
+      - name: Step 4 - Compress Valhalla Tiles to ZIP
+        run: |
+          sudo chmod -R 777 custom_files
+          cd custom_files
+          
+          # التحقق من وجود ملف valhalla_tiles.tar أو مجلد التايلز
+          if [ -f "valhalla_tiles.tar" ]; then
+            echo "تم العثور على valhalla_tiles.tar. جاري الضغط إلى ZIP..."
+            zip -9 yemen_valhalla_tiles.zip valhalla_tiles.tar
+          elif [ -d "valhalla_tiles" ]; then
+            echo "تم العثور على مجلد valhalla_tiles. جاري تحويله لـ TAR ثم ZIP..."
+            tar -cf valhalla_tiles.tar valhalla_tiles/
+            zip -9 yemen_valhalla_tiles.zip valhalla_tiles.tar
+          else
+            echo "جاري ضغط كافة مخرجات البلاطات..."
+            zip -r -9 yemen_valhalla_tiles.zip . -i "*.tar" -i "*.json"
+          fi
+          
+          echo "حجم الملف المضغوط النهائي:"
+          ls -lh yemen_valhalla_tiles.zip
+
+      # Step 6: رفع الملف كـ Artifact في تبويب GitHub Actions
+      - name: Step 5 - Upload Valhalla Tiles Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yemen-valhalla-maps
+          path: custom_files/yemen_valhalla_tiles.zip
+          retention-days: 90
+
+      # Step 7 (اختياري): نشر الملف كـ Release لتوفير رابط تحميل مباشر ومستمر
+      - name: Step 6 - Create GitHub Release with Direct Download Link
+        if: ${{ inputs.create_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: yemen-tiles-${{ github.run_number }}
+          name: Yemen Valhalla Tiles Release v${{ github.run_number }}
+          body: |
+            ### 🇾🇪 حزمة بلاطات Valhalla الكاملة لخرائط اليمن (Yemen Routing Tiles)
+            - **المصدر:** خريطة اليمن الرسمية من OpenStreetMap / Geofabrik.
+            - **تاريخ البناء:** ${{ github.event.head_commit.timestamp || 'Latest' }}
+            - **الاستخدام:** فك الضغط واستخدام ملف `valhalla_tiles.tar` داخل محرك الملاحة الأوفلاين.
+          files: custom_files/yemen_valhalla_tiles.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

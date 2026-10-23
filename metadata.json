@@ -1,0 +1,6 @@
+{
+  "name": "خريطة اليمن",
+  "description": "تطبيق متكامل وتفاعلي لخريطة الجمهورية اليمنية مع محرك ملاحة بدون إنترنت مبني على بلاطات Valhalla المدمجة، واستكشاف المحافظات والمعالم.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

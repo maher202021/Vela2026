@@ -1,0 +1,34 @@
+{
+  "valhalla": {
+    "tiles": {
+      "tile_dir": "/data/valhalla/tiles",
+      "tile_extract": "/data/valhalla/valhalla_tiles_yemen.tar",
+      "max_cache_size": 104857600
+    },
+    "service_limits": {
+      "auto": {
+        "max_distance": 5000000.0,
+        "max_locations": 20
+      }
+    },
+    "costing_options": {
+      "auto": {
+        "country_crossing_penalty": 0.0,
+        "use_highways": 1.0,
+        "use_tolls": 0.5,
+        "top_speed": 100
+      }
+    }
+  },
+  "region": "Yemen (Republic of Yemen)",
+  "country_code": "YE",
+  "bbox": {
+    "min_lat": 12.0,
+    "max_lat": 19.0,
+    "min_lng": 41.8,
+    "max_lng": 54.5
+  },
+  "format": "valhalla_tiles_v3",
+  "version": "3.4.0",
+  "created_at": "2026-10-23"
+}
